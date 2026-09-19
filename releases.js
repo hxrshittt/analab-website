@@ -13,8 +13,7 @@
    showing the text that is written in the HTML. Nothing breaks.
 --------------------------------------------------------------------------- */
 
-const REPO = ""; // e.g. "your-username/analab-website"
-
+   const REPO = "hxrshittt/analab-website";
 (function () {
   if (!REPO || REPO.indexOf("/") === -1) return;
 
