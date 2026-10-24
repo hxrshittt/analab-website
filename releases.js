@@ -3,9 +3,11 @@
 
    HOW TO USE
    1. Put your repository below, e.g. REPO = "harshit/analab-website".
-   2. To publish a new software version: go to your repo -> Releases ->
+   2. To publish a new Analab version: go to your repo -> Releases ->
       "Draft a new release", tag it v1.4.0, attach the installer file,
       write the changelog in the description box, publish.
+   For AnalabSafe use a tag like safe-v1.0.0 (the "safe-" prefix routes it
+   to the AnalabSafe section).
    The Downloads page, Release Notes page and the version badge in the header
    then update themselves. Nothing has to be rebuilt or re-uploaded.
 
@@ -32,7 +34,7 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
     );
 
-  const cleanVersion = (tag) => String(tag || "").replace(/^v/i, "");
+  const cleanVersion = (tag) => String(tag || "").replace(/^(safe-)?v/i, "");
 
   const fmtDate = (iso) => {
     const d = new Date(iso);
@@ -109,22 +111,22 @@
     });
   }
 
-  function applyDownloads(releases) {
-    const versionBig = $("#dl-version");
+  function applyDownloads(releases, p) {
+    const versionBig = $("#" + p + "-version");
     if (!versionBig) return; // not the downloads page
 
     const latest = releases[0];
     const asset = pickAsset(latest);
 
     setText(versionBig, "v" + cleanVersion(latest.tag_name));
-    setText($("#dl-date"), "Released: " + fmtDate(latest.published_at));
+    setText($("#" + p + "-date"), "Released: " + fmtDate(latest.published_at));
 
     if (asset) {
-      setText($("#dl-size"), fmtSize(asset.size));
-      const link = $("#dl-link");
+      setText($("#" + p + "-size"), fmtSize(asset.size));
+      const link = $("#" + p + "-link");
       if (link) link.setAttribute("href", asset.browser_download_url);
 
-      const shaLine = $("#dl-sha");
+      const shaLine = $("#" + p + "-sha");
       if (shaLine) {
         const digest = (asset.digest || "").replace(/^sha256:/i, "");
         if (digest) {
@@ -139,7 +141,7 @@
       }
     }
 
-    const previous = $("#dl-previous");
+    const previous = $("#" + p + "-previous");
     if (!previous) return;
     const older = releases.slice(1, 7);
     previous.innerHTML = "";
@@ -174,8 +176,8 @@
     });
   }
 
-  function applyReleaseNotes(releases) {
-    const list = $("#rn-list");
+  function applyReleaseNotes(releases, listId, name) {
+    const list = $(listId);
     if (!list) return; // not the release notes page
 
     list.innerHTML = "";
@@ -184,7 +186,7 @@
       const btn = el(
         "button",
         null,
-        "Analab v" +
+        name + " v" +
           esc(cleanVersion(rel.tag_name)) +
           " — " +
           esc(fmtDate(rel.published_at)) +
@@ -207,10 +209,19 @@
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((data) => {
       const releases = (data || []).filter((r) => !r.draft && !r.prerelease);
-      if (!releases.length) return;
-      applyHeaderVersion(cleanVersion(releases[0].tag_name));
-      applyDownloads(releases);
-      applyReleaseNotes(releases);
+      // AnalabSafe releases are tagged "safe-vX.Y.Z"; everything else is Analab.
+      const isSafe = (r) => /^safe-/i.test(r.tag_name);
+      const analab = releases.filter((r) => !isSafe(r));
+      const safe = releases.filter(isSafe);
+      if (analab.length) {
+        applyHeaderVersion(cleanVersion(analab[0].tag_name));
+        applyDownloads(analab, "dl");
+        applyReleaseNotes(analab, "#rn-list", "Analab");
+      }
+      if (safe.length) {
+        applyDownloads(safe, "safe-dl");
+        applyReleaseNotes(safe, "#safe-rn-list", "AnalabSafe");
+      }
     })
     .catch(() => {
       /* Offline or repo not set — the static HTML stays as written. */
